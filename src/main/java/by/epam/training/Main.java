@@ -1,16 +1,16 @@
 package by.epam.training;
 
-import by.epam.training.htmlparser.HtmlParser;
+import by.epam.training.controller.HtmlParserController;
+import by.epam.training.service.HtmlParserService;
 
 public class Main {
 
     private static final String url = "https://jobs.tut.by/";
 
     public static void main(String[] args) {
-        HtmlParser parser = new HtmlParser();
-        parser.getLinks(url);
-        System.out.println("Finished after depth value reached "+ parser.getDepthCount());
-        System.out.println(parser.getLinksSet().size());
+        HtmlParserService parser = new HtmlParserService();
+        HtmlParserController controller = new HtmlParserController(parser);
+        System.out.println("Size of links set is " + controller.parseHtml(url));
     }
 }
 

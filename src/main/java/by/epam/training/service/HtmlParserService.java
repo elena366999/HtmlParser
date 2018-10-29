@@ -1,4 +1,4 @@
-package by.epam.training.htmlparser;
+package by.epam.training.service;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -11,7 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class HtmlParser {
+public class HtmlParserService {
 
     private int depthCount = 0;
 
@@ -65,6 +65,6 @@ public class HtmlParser {
     }
 
     private boolean isUrlValid(String url) {
-        return !(url == null) && !url.isEmpty() &&( url.startsWith("https") || url.startsWith("http"));
+        return !(url == null) && !url.isEmpty() && (url.startsWith("https") || url.startsWith("http"));
     }
 }
