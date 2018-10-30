@@ -10,7 +10,18 @@ public class Main {
     public static void main(String[] args) {
         HtmlParserService parser = new HtmlParserService();
         HtmlParserController controller = new HtmlParserController(parser);
-        System.out.println("Size of links set is " + controller.parseHtml(url));
+
+        long start = System.currentTimeMillis();
+        controller.parseHtml(url);
+        long result = System.currentTimeMillis() - start;
+
+        long start2 = System.currentTimeMillis();
+        controller.parseHtmlParallel(url);
+        long result2 = System.currentTimeMillis() - start2;
+
+        System.out.println("Runtime without multithreading - " + result + " ms");
+        System.out.println("Runtime with multithreading - " + result2  + " ms");
+
     }
 }
 
