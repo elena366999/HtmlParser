@@ -7,37 +7,32 @@ import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 @Service
-public class HtmlParserService {
+public class HtmlParsingServiceImpl implements ParsingService {
 
-    private static final Logger logger = Logger.getLogger(HtmlParserService.class);
-
-    private static int depthCount = 0;
+    private static final Logger logger = Logger.getLogger(HtmlParsingServiceImpl.class);
 
     private static final String regex = "^(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]";
 
     private static final int timeout = 10000;
 
-    private static final int depth = 2; //depth value was decreased to reduce runtime
+    private static final int depth = 2;
 
-    private static Set<String> linksSet = new HashSet<>();
+    private Executor executor = Executors.newFixedThreadPool(80);
 
-    public Set<String> parseHtml(String url) {
-        collectLinks(url);
-        Set<String> links = linksSet;
-        linksSet = new HashSet<>();
-        depthCount = 0;
-        return links;
+    public Set<String> parse(String url) {
+        Set<String> set = new HashSet<>();
+        int depthCount = 0;
+        collectLinks(url, set, depthCount);
+        return set;
     }
 
-    public Set<String> parseHtmlParallel(String url) {
-        Executor executor = Executors.newFixedThreadPool(80);
+    public Set<String> parseParallel(String url) {
         CompletableFuture<Set<String>> future = CompletableFuture.supplyAsync(() -> getSetOfLinksParallel(url), executor);
         ((ExecutorService) executor).shutdown();
         Set<String> links = new HashSet<>();
@@ -50,67 +45,59 @@ public class HtmlParserService {
     }
 
     private Set<String> getSetOfLinksParallel(String url) {
-        collectLinksParallel(url);
-        Set<String> links = linksSet;
-        linksSet = new HashSet<>();
-        depthCount = 0;
-        return links;
+        Set<String> set = new HashSet<>();
+        int depthCount = 0;
+        collectLinksParallel(url, set, depthCount);
+        return set;
     }
 
-    private void collectLinksParallel(String url) {
+
+    private void collectLinksParallel(String url, Set<String> set, int depthCount) {
         if (isUrlValid(url)) {
             Document document = getDocument(url);
             if (document != null) {
                 Elements links = document.select("a[href]");
-                List<String> linksList = new ArrayList<>();
                 if (!links.isEmpty()) {
-                    addLinksToListParallel(links, linksList, url);
-                    linksSet.addAll(linksList);
+                    Set<String> links1 = addLinksToSetParallel(links, url);
+                    set.addAll(links1);
                     if (depthCount < depth) {
                         depthCount++;
-                        linksList.parallelStream().forEach(this::collectLinksParallel);
+                        for (String link1 : links1) {
+                            collectLinks(link1, set, depthCount);
+                        }
                     }
                 }
             }
         }
     }
 
-    private void collectLinks(String url) {
+    private void collectLinks(String url, Set<String> set, int depthCount) {
         if (isUrlValid(url)) {
             Document document = getDocument(url);
             if (document != null) {
                 Elements links = document.select("a[href]");
-                List<String> linksList = new ArrayList<>();
                 if (!links.isEmpty()) {
-                    addLinksToList(links, linksList, url);
-                    linksSet.addAll(linksList);
+                    Set<String> links1 = addLinksToSet(links, url);
+                    set.addAll(links1);
                     if (depthCount < depth) {
                         depthCount++;
-                        linksList.forEach(this::collectLinks);
+                        for (String link1 : links1) {
+                            collectLinks(link1, set, depthCount);
+                        }
                     }
                 }
             }
         }
     }
 
-    private void addLinksToListParallel(Elements links, List<String> linksList, String url) {
-        links.forEach(link -> {
-            String attr = link.attr("abs:href");
-            if (attr.startsWith(url)) {
-                linksList.add(attr);
-                linksList.parallelStream().forEach(System.out::println);
-            }
-        });
+    private Set<String> addLinksToSetParallel(Elements links, String url) {
+        return links.parallelStream().map(link -> link.attr("abs:href"))
+                .filter(attr -> attr.startsWith(url)).collect(Collectors.toSet());
     }
 
-    private void addLinksToList(Elements links, List<String> linksList, String url) {
-        links.forEach(link -> {
-            String attr = link.attr("abs:href");
-            if (attr.startsWith(url)) {
-                linksList.add(attr);
-                linksList.forEach(System.out::println);
-            }
-        });
+    private Set<String> addLinksToSet(Elements links, String url) {
+        return links.stream().map(link -> link.attr("abs:href"))
+                .filter(attr -> attr.startsWith(url)).collect(Collectors.toSet());
     }
 
     private Document getDocument(String url) {
@@ -118,7 +105,7 @@ public class HtmlParserService {
         try {
             document = Jsoup.connect(url).timeout(timeout).ignoreContentType(false).validateTLSCertificates(false).get();
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
         return document;
     }
