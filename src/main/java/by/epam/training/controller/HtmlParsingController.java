@@ -1,7 +1,6 @@
 package by.epam.training.controller;
 
 import by.epam.training.service.ParsingService;
-import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,8 +12,6 @@ import java.util.Set;
 @RestController
 public class HtmlParsingController {
 
-    private static final Logger logger = Logger.getLogger(HtmlParsingController.class);
-
     @Autowired
     @Qualifier("regularService")
     private ParsingService htmlParsingServiceImpl;
@@ -24,19 +21,27 @@ public class HtmlParsingController {
     private ParsingService htmlParsingParallelServiceImpl;
 
     @GetMapping("parseParallel")
-    public Set<String> parseHtmlParallel(@RequestParam("url") String url) {
-        long start = System.currentTimeMillis();
-        Set<String> parsedLinks = htmlParsingParallelServiceImpl.parse(url);
-        logger.info("Runtime for parallel: " + (System.currentTimeMillis() - start));
-        return parsedLinks;
+    public Set<String> parseHtmlParallel(@RequestParam("url") String url, @RequestParam(name = "skipCacheCheck", required = false) String skipCacheCheck) {
+        Set<String> parsedLinks;
+        if (skipCacheCheck != null && skipCacheCheck.equals("true")) {
+            parsedLinks = htmlParsingParallelServiceImpl.parse(url, true);
+            return parsedLinks;
+        } else {
+            parsedLinks = htmlParsingParallelServiceImpl.parse(url, false);
+            return parsedLinks;
+        }
     }
 
     @GetMapping("parse")
-    public Set<String> parseHtml(@RequestParam("url") String url) {
-        long start = System.currentTimeMillis();
-        Set<String> parsedLinks = htmlParsingServiceImpl.parse(url);
-        logger.info("Runtime for regular: " + (System.currentTimeMillis() - start));
-        return parsedLinks;
+    public Set<String> parseHtml(@RequestParam("url") String url, @RequestParam(name = "skipCacheCheck", required = false) String skipCacheCheck) {
+        Set<String> parsedLinks;
+        if (skipCacheCheck != null && skipCacheCheck.equals("true")) {
+            parsedLinks = htmlParsingServiceImpl.parse(url, true);
+            return parsedLinks;
+        } else {
+            parsedLinks = htmlParsingServiceImpl.parse(url, false);
+            return parsedLinks;
+        }
     }
 }
 

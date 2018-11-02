@@ -21,7 +21,11 @@ public interface ParsingService {
 
     Executor executor = Executors.newFixedThreadPool(80);
 
-    Set<String> parse(String value);
+    Set<String> parse(String value, boolean skipCacheCheck);
+
+    Set<String> checkCacheAndParse(String value);
+
+    Set<String> parseWithoutCheckingCache(String value);
 
     default Document getDocument(String url) {
         Document document = null;

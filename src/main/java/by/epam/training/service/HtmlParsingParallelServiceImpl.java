@@ -1,25 +1,54 @@
 package by.epam.training.service;
 
-import org.apache.log4j.Logger;
+import by.epam.training.util.CachingUtil;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
 @Service("parallelService")
 public class HtmlParsingParallelServiceImpl implements ParsingService {
 
-    private static final Logger logger = Logger.getLogger(HtmlParsingParallelServiceImpl.class);
+    @Autowired
+    @Qualifier("fileCaching")
+    private CachingUtil fileCachingUtil;
 
-    public Set<String> parse(String url) {
-        CompletableFuture<Set<String>> future = CompletableFuture.supplyAsync(() -> getSetOfLinksParallel(url), executor);
-        ((ExecutorService) executor).shutdown();
+    @Autowired
+    @Qualifier("redisCaching")
+    private CachingUtil redisCachingUtil;
+
+    @Override
+    public Set<String> parse(String url, boolean skipCacheCheck) {
+        CompletableFuture<Set<String>> future;
+        if (skipCacheCheck) {
+            future = CompletableFuture.supplyAsync(() -> parseWithoutCheckingCache(url));
+        } else {
+            future = CompletableFuture.supplyAsync(() -> checkCacheAndParse(url));
+        }
+        return getLinksFromFuture(future);
+    }
+
+    @Override
+    public Set<String> parseWithoutCheckingCache(String url) {
+        Set<String> set = new HashSet<>();
+        int depthCount = 0;
+        collectLinksParallel(url, set, depthCount);
+        Set<String> checkedCache = fileCachingUtil.checkCache(url);
+        if (checkedCache.equals(Collections.emptySet())) {
+            cache(url, set);
+        }
+        return set;
+    }
+
+    private Set<String> getLinksFromFuture(CompletableFuture<Set<String>> future) {
         Set<String> links = new HashSet<>();
         try {
             links = future.get();
@@ -29,11 +58,22 @@ public class HtmlParsingParallelServiceImpl implements ParsingService {
         return links;
     }
 
-    private Set<String> getSetOfLinksParallel(String url) {
-        Set<String> set = new HashSet<>();
-        int depthCount = 0;
-        collectLinksParallel(url, set, depthCount);
-        return set;
+    private void cache(String url, Set<String> set) {
+        redisCachingUtil.cache(set, url);
+        fileCachingUtil.cache(set, url);
+    }
+
+    public Set<String> checkCacheAndParse(String url) {
+        Set<String> checkedCache = fileCachingUtil.checkCache(url);
+        if (!checkedCache.equals(Collections.emptySet())) {
+            return checkedCache;
+        } else {
+            Set<String> set = new HashSet<>();
+            int depthCount = 0;
+            collectLinksParallel(url, set, depthCount);
+            cache(url, set);
+            return set;
+        }
     }
 
     private void collectLinksParallel(String url, Set<String> set, int depthCount) {
@@ -56,7 +96,7 @@ public class HtmlParsingParallelServiceImpl implements ParsingService {
     }
 
     private Set<String> addLinksToSetParallel(Elements links, String url) {
-        return links.parallelStream().map(link -> link.attr("abs:href"))
+        return links.parallelStream().limit(10).map(link -> link.attr("abs:href"))
                 .filter(attr -> attr.startsWith(url)).collect(Collectors.toSet());
     }
 }
