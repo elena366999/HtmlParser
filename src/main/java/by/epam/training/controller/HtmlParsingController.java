@@ -1,6 +1,7 @@
 package by.epam.training.controller;
 
 import by.epam.training.service.ParsingService;
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,36 +13,42 @@ import java.util.Set;
 @RestController
 public class HtmlParsingController {
 
-    @Autowired
-    @Qualifier("regularService")
-    private ParsingService htmlParsingServiceImpl;
+    private static final Logger logger = Logger.getLogger(HtmlParsingController.class);
 
     @Autowired
-    @Qualifier("parallelService")
-    private ParsingService htmlParsingParallelServiceImpl;
+    @Qualifier("nonConcurrentHtmlParsingService")
+    private ParsingService nonConcurrentHtmlParsingServiceImpl;
 
-    @GetMapping("parseParallel")
-    public Set<String> parseHtmlParallel(@RequestParam("url") String url, @RequestParam(name = "skipCacheCheck", required = false) String skipCacheCheck) {
+    @Autowired
+    @Qualifier("concurrentHtmlParsingService")
+    private ParsingService concurrentHtmlParsingServiceImpl;
+
+    @GetMapping("parseConcurrently")
+    public Set<String> parseHtmlConcurrently(@RequestParam("url") String url,
+                                             @RequestParam(name = "skipCacheCheck", required = false) String skipCacheCheck) {
         Set<String> parsedLinks;
         if (skipCacheCheck != null && skipCacheCheck.equals("true")) {
-            parsedLinks = htmlParsingParallelServiceImpl.parse(url, true);
-            return parsedLinks;
+            logger.info("Parsing concurrently without checking cache...");
+            parsedLinks = concurrentHtmlParsingServiceImpl.parse(url, true);
         } else {
-            parsedLinks = htmlParsingParallelServiceImpl.parse(url, false);
-            return parsedLinks;
+            logger.info("Checking cache and parsing concurrently...");
+            parsedLinks = concurrentHtmlParsingServiceImpl.parse(url, false);
         }
+        return parsedLinks;
     }
 
     @GetMapping("parse")
-    public Set<String> parseHtml(@RequestParam("url") String url, @RequestParam(name = "skipCacheCheck", required = false) String skipCacheCheck) {
+    public Set<String> parseHtmlNonConcurrently(@RequestParam("url") String url,
+                                                @RequestParam(name = "skipCacheCheck", required = false) String skipCacheCheck) {
         Set<String> parsedLinks;
         if (skipCacheCheck != null && skipCacheCheck.equals("true")) {
-            parsedLinks = htmlParsingServiceImpl.parse(url, true);
-            return parsedLinks;
+            logger.info("Parsing non-concurrently without checking cache...");
+            parsedLinks = nonConcurrentHtmlParsingServiceImpl.parse(url, true);
         } else {
-            parsedLinks = htmlParsingServiceImpl.parse(url, false);
-            return parsedLinks;
+            logger.info("Checking cache and parsing non-concurrently...");
+            parsedLinks = nonConcurrentHtmlParsingServiceImpl.parse(url, false);
         }
+        return parsedLinks;
     }
 }
 

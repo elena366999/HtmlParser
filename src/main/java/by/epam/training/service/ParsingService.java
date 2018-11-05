@@ -6,31 +6,20 @@ import org.jsoup.nodes.Document;
 
 import java.io.IOException;
 import java.util.Set;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
+
+import static by.epam.training.constant.Constants.REGEX;
+import static by.epam.training.constant.Constants.TIMEOUT;
 
 public interface ParsingService {
 
     Logger logger = Logger.getLogger(ParsingService.class);
 
-    String regex = "^(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]";
-
-    int timeout = 10000;
-
-    int depth = 2;
-
-    Executor executor = Executors.newFixedThreadPool(80);
-
     Set<String> parse(String value, boolean skipCacheCheck);
-
-    Set<String> checkCacheAndParse(String value);
-
-    Set<String> parseWithoutCheckingCache(String value);
 
     default Document getDocument(String url) {
         Document document = null;
         try {
-            document = Jsoup.connect(url).timeout(timeout).ignoreContentType(false).validateTLSCertificates(false).get();
+            document = Jsoup.connect(url).timeout(TIMEOUT).ignoreContentType(false).validateTLSCertificates(false).get();
         } catch (IOException e) {
             logger.error(e.getMessage(), e);
         }
@@ -38,6 +27,6 @@ public interface ParsingService {
     }
 
     default boolean isUrlValid(String url) {
-        return url.matches(regex);
+        return url.matches(REGEX);
     }
 }

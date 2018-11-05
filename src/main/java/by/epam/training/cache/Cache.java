@@ -1,8 +1,8 @@
-package by.epam.training.util;
+package by.epam.training.cache;
 
 import java.util.Set;
 
-public interface CachingUtil {
+public interface Cache {
 
     void cache(Set<String> links, String url);
 
