@@ -23,7 +23,10 @@ public class RedisCache implements Cache {
     @Override
     public void cache(Set<String> links, String url) {
         String trimmedUrl = trimUrl(url);
-        links.forEach(link -> jedis.sadd(trimmedUrl, link));
+        if (jedis.exists(trimmedUrl)) {
+            jedis.del(trimmedUrl);
+        }
+            links.forEach(link -> jedis.sadd(trimmedUrl, link));
         logger.debug("Links for url " + url + " were cached using Redis");
         logger.info("Redis cache wilL expire in " + EXPIRATION_TIME + " seconds");
 

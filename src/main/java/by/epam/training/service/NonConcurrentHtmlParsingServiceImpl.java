@@ -1,10 +1,7 @@
 package by.epam.training.service;
 
-import by.epam.training.cache.Cache;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -15,15 +12,7 @@ import java.util.stream.Collectors;
 import static by.epam.training.constant.Constants.DEPTH;
 
 @Service("nonConcurrentHtmlParsingService")
-public class NonConcurrentHtmlParsingServiceImpl implements ParsingService {
-
-    @Autowired
-    @Qualifier("fileCache")
-    private Cache fileCache;
-
-    @Autowired
-    @Qualifier("redisCache")
-    private Cache redisCache;
+public class NonConcurrentHtmlParsingServiceImpl extends ParsingService {
 
     @Override
     public Set<String> parse(String url, boolean skipCacheCheck) {
@@ -55,30 +44,28 @@ public class NonConcurrentHtmlParsingServiceImpl implements ParsingService {
         return linksSet;
     }
 
-    private void cache(String url, Set<String> set) {
-        logger.info("Writing data to Redis (non-concurrently)...");
-        redisCache.cache(set, url);
+    private void collectLinksNonConcurrently(String url, Set<String> linksSet, int depthCount) {
+        Elements linkElements = getElements(url);
+        if (linkElements != null && !linkElements.isEmpty()) {
+            logger.debug("Number of link elements for current url retrieved in non-concurrent service: " + linkElements.size());
+            Set<String> links = createSetOfLinks(linkElements, url);
+            linksSet.addAll(links);
 
-        logger.info("Writing data to file (non-concurrently)...");
-        fileCache.cache(set, url);
+            logger.debug("Links " + links + " were added to the set of links (non-concurrently)");
+            increaseDepthAndCollectLinks(linksSet, depthCount, links);
+        }
     }
 
-    private void collectLinksNonConcurrently(String url, Set<String> linksSet, int depthCount) {
+    private Elements getElements(String url) {
+        Elements linkElements = null;
         if (isUrlValid(url)) {
             Document document = getDocument(url);
             if (document != null) {
                 logger.debug("Url currently processed in non-concurrent service: " + url);
-                Elements linkElements = document.select("a[href]");
-                if (!linkElements.isEmpty()) {
-                    logger.debug("Number of link elements for current url retrieved in non-concurrent service: " + linkElements.size());
-                    Set<String> links = addLinksToSet(linkElements, url);
-                    linksSet.addAll(links);
-
-                    logger.debug("Links " + links + " were added to the set of links (non-concurrently)");
-                    increaseDepthAndCollectLinks(linksSet, depthCount, links);
-                }
+                linkElements = document.select("a[href]");
             }
         }
+        return linkElements;
     }
 
     private void increaseDepthAndCollectLinks(Set<String> linksSet, int depthCount, Set<String> links) {
@@ -91,8 +78,8 @@ public class NonConcurrentHtmlParsingServiceImpl implements ParsingService {
         }
     }
 
-    private Set<String> addLinksToSet(Elements links, String url) {
-        return links.stream().limit(20).map(l -> l.attr("abs:href"))
+    private Set<String> createSetOfLinks(Elements links, String url) {
+        return links.stream().map(l -> l.attr("abs:href"))
                 .filter(attr -> attr.startsWith(url)).collect(Collectors.toSet());
     }
 
