@@ -9,6 +9,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import static by.epam.training.constant.Constants.DEPTH;
@@ -18,6 +19,8 @@ public class ConcurrentHtmlParsingServiceImpl extends ParsingService {
 
     private final ExecutorService executorService = Executors
             .newFixedThreadPool(80);
+
+    private ReentrantLock lock = new ReentrantLock();
 
     @Override
     public Set<String> parse(String url, boolean skipCacheCheck) {
@@ -57,7 +60,12 @@ public class ConcurrentHtmlParsingServiceImpl extends ParsingService {
         } catch (InterruptedException | ExecutionException e) {
             logger.error(e.getMessage(), e);
         }
-        cache(url, result);
+        lock.lock();
+        try {
+            cache(url, result);
+        } finally {
+            lock.unlock();
+        }
         return result;
     }
 
@@ -75,5 +83,4 @@ public class ConcurrentHtmlParsingServiceImpl extends ParsingService {
         }
         return result;
     }
-
 }

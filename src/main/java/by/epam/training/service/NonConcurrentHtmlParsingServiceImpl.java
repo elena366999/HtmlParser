@@ -79,7 +79,7 @@ public class NonConcurrentHtmlParsingServiceImpl extends ParsingService {
     }
 
     private Set<String> createSetOfLinks(Elements links, String url) {
-        return links.stream().map(l -> l.attr("abs:href"))
+        return links.stream().limit(20).map(l -> l.attr("abs:href"))
                 .filter(attr -> attr.startsWith(url)).collect(Collectors.toSet());
     }
 
