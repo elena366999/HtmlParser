@@ -48,4 +48,14 @@ public abstract class ParsingService {
         logger.info("Writing data to file (non-concurrently)...");
         fileCache.cache(set, url);
     }
+
+    Set<String> getLinksFromCache(String url) {
+        Set<String> redisCachedLinks = redisCache.checkCache(url);
+        if (!redisCachedLinks.isEmpty()) {
+            return redisCachedLinks;
+        } else {
+            logger.info("Redis cache is empty. Trying to retrieve cache form file (concurrently)...");
+            return fileCache.checkCache(url);
+        }
+    }
 }

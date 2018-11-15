@@ -17,5 +17,6 @@ public class Constants {
 
     public static final int EXPIRATION_TIME = 600;
 
+    public static final int DELETE_CACHED_FILES_INTERVAL = 60 * 60 * 24;
 
 }

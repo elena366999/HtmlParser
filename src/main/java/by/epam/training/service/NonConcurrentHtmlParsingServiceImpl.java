@@ -4,7 +4,6 @@ import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -16,24 +15,16 @@ public class NonConcurrentHtmlParsingServiceImpl extends ParsingService {
 
     @Override
     public Set<String> parse(String url, boolean skipCacheCheck) {
-        Set<String> cache = getCache(url);
-        if (skipCacheCheck || cache.equals(Collections.emptySet())) {
+        if (skipCacheCheck) {
+            return retrieveLinks(url);
+        }
+        Set<String> linksFromCache = getLinksFromCache(url);
+        if (linksFromCache.isEmpty()) {
             logger.info("Retrieving new links from html page (non-concurrently)...");
             return retrieveLinks(url);
-        } else {
-            logger.info("Returning cache data (non-concurrently)...");
-            return cache;
         }
-    }
-
-    private Set<String> getCache(String url) {
-        Set<String> checkedRedisCache = redisCache.checkCache(url);
-        if (!checkedRedisCache.equals(Collections.emptySet())) {
-            return checkedRedisCache;
-        } else {
-            logger.info("Redis cache is empty. Trying to retrieve cache form file (non-concurrently)...");
-            return fileCache.checkCache(url);
-        }
+        logger.info("Returning cache data (non-concurrently)...");
+        return linksFromCache;
     }
 
     private Set<String> retrieveLinks(String url) {
@@ -79,8 +70,8 @@ public class NonConcurrentHtmlParsingServiceImpl extends ParsingService {
     }
 
     private Set<String> createSetOfLinks(Elements links, String url) {
-        return links.stream().limit(20).map(l -> l.attr("abs:href"))
-                .filter(attr -> attr.startsWith(url)).collect(Collectors.toSet());
+        return links.stream().map(l -> l.attr("abs:href"))
+                .filter(attr -> attr.startsWith(url)).limit(20).collect(Collectors.toSet());
     }
 
 }

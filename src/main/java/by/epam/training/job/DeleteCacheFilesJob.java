@@ -7,6 +7,7 @@ import org.quartz.JobExecutionException;
 
 import java.io.File;
 
+import static by.epam.training.constant.Constants.DELETE_CACHED_FILES_INTERVAL;
 import static by.epam.training.constant.Constants.FOLDER_NAME;
 
 public class DeleteCacheFilesJob implements Job {
@@ -18,7 +19,7 @@ public class DeleteCacheFilesJob implements Job {
         System.out.println("Running DeleteCacheFilesJob...");
         File cacheDir = new File(FOLDER_NAME);
         if (cacheDir.exists()) {
-            long purgeTime = System.currentTimeMillis() - 24 * 60 * 60 * 1000;
+            long purgeTime = System.currentTimeMillis() - DELETE_CACHED_FILES_INTERVAL * 1000;
             File[] listFiles = cacheDir.listFiles();
             if (listFiles != null && listFiles.length != 0) {
                 for (File file : listFiles) {

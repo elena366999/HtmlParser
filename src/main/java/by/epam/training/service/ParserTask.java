@@ -33,7 +33,7 @@ public class ParserTask implements Callable<Set<String>> {
                 Elements linkElements = document.select("a[href]");
                 if (linkElements != null) {
                     result = linkElements.stream().map(l -> l.attr("abs:href"))
-                            .filter(attr -> attr.startsWith(url)).collect(Collectors.toSet());
+                            .filter(attr -> attr.startsWith(url)).limit(20).collect(Collectors.toSet());
                 }
             }
         }
